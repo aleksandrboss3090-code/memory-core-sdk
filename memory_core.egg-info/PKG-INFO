@@ -1,0 +1,30 @@
+Metadata-Version: 2.4
+Name: memory-core
+Version: 0.3.3
+Summary: Universal memory engine for AI bots. 3 layers: Redis (Hot) + Qdrant (Warm) + Neo4j (Cold).
+Author-email: Otel Group <info@otelgroup.ru>
+License: MIT
+Project-URL: Homepage, https://memorycore.ru
+Project-URL: Documentation, https://api.memorycore.ru/docs
+Project-URL: Repository, https://github.com/aleksandrboss3090-code/memory-core-sdk
+Project-URL: Dashboard, https://memorycore.ru/dashboard
+Keywords: ai,memory,bots,telegram,qdrant,redis,neo4j,embeddings,semantic-search
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.28.0
+Provides-Extra: async
+Requires-Dist: httpx>=0.24.0; extra == "async"
+Provides-Extra: all
+Requires-Dist: requests>=2.28.0; extra == "all"
+Requires-Dist: httpx>=0.24.0; extra == "all"

@@ -1,0 +1,8 @@
+pyproject.toml
+memory_core/__init__.py
+memory_core/client.py
+memory_core.egg-info/PKG-INFO
+memory_core.egg-info/SOURCES.txt
+memory_core.egg-info/dependency_links.txt
+memory_core.egg-info/requires.txt
+memory_core.egg-info/top_level.txt

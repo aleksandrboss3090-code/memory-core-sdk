@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memory-core"
+version = "0.3.3"
+description = "Universal memory engine for AI bots. 3 layers: Redis (Hot) + Qdrant (Warm) + Neo4j (Cold)."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "Otel Group", email = "info@otelgroup.ru"},
+]
+keywords = ["ai", "memory", "bots", "telegram", "qdrant", "redis", "neo4j", "embeddings", "semantic-search"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "requests>=2.28.0",
+]
+
+[project.optional-dependencies]
+async = ["httpx>=0.24.0"]
+all = ["requests>=2.28.0", "httpx>=0.24.0"]
+
+[project.urls]
+Homepage = "https://memorycore.ru"
+Documentation = "https://api.memorycore.ru/docs"
+Repository = "https://github.com/aleksandrboss3090-code/memory-core-sdk"
+Dashboard = "https://memorycore.ru/dashboard"
+
+[tool.setuptools.packages.find]
+include = ["memory_core*"]
