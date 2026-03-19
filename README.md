@@ -5,7 +5,7 @@ Universal memory engine for AI bots. 3 layers: Redis (Hot) + Qdrant (Warm) + Neo
 ## Quick Start
 
 ```bash
-pip install memory-core
+pip install memorycore-ai
 ```
 
 ```python
@@ -26,7 +26,7 @@ ctx = memory.context(user_id="user_42", query="что заказать на уж
 ## Async (for aiogram, FastAPI)
 
 ```bash
-pip install memory-core[async]
+pip install memorycore-ai[async]
 ```
 
 ```python
