@@ -2,6 +2,8 @@
 
 Universal memory engine for AI bots. 3 layers: Redis (Hot) + Qdrant (Warm) + Neo4j (Cold).
 
+**FZ-152 compliant** — all personal data stored in Russia.
+
 ## Quick Start
 
 ```bash
@@ -38,7 +40,9 @@ await memory.upsert(user_id="user_42", content="Предпочитает SPA")
 ctx = await memory.context(user_id="user_42", query="что предложить?")
 ```
 
-## API
+## API Methods
+
+### Core
 
 | Method | Description |
 |--------|-------------|
@@ -50,11 +54,94 @@ ctx = await memory.context(user_id="user_42", query="что предложить
 | `profile(user_id)` | Full user profile |
 | `health()` | API health check |
 
+### New in v0.4.2
+
+| Method | Description |
+|--------|-------------|
+| `search(user_id, query)` | Semantic search with filters |
+| `delete(user_id, memory_id)` | Delete memory entries |
+| `usage()` | API usage & rate limits |
+| `export_data(user_id)` | Export user data (GDPR/FZ-152) |
+| `import_data(user_id, records)` | Bulk import records |
+| `regenerate_key()` | Regenerate API key |
+
+## Examples
+
+### Semantic Search
+
+```python
+results = memory.search(
+    user_id="user_42",
+    query="итальянская еда",
+    limit=5,
+    memory_type="fact"
+)
+for item in results["results"]:
+    print(f"{item['content']} (score: {item['score']:.2f})")
+```
+
+### Check Usage & Limits
+
+```python
+usage = memory.usage()
+print(f"Plan: {usage['plan']}")
+print(f"Used: {usage['used']}/{usage['limit']}")
+print(f"Remaining: {usage['remaining']}")
+```
+
+### Delete Memory
+
+```python
+# Delete specific entry
+memory.delete(user_id="user_42", memory_id="uuid-here")
+
+# Delete all facts
+memory.delete(user_id="user_42", memory_type="fact")
+
+# Delete ALL user data
+memory.delete(user_id="user_42", delete_all=True)
+```
+
+### Export / Import (GDPR/FZ-152)
+
+```python
+# Export
+data = memory.export_data("user_42", format="json")
+print(f"Exported {data['total']} records")
+
+# Import
+memory.import_data("user_42", records=[
+    {"content": "Loves Italian food", "memory_type": "fact"},
+    {"content": "Prefers morning meetings", "memory_type": "preference"},
+])
+```
+
+## Rate Limit Headers
+
+Every API response includes these headers:
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Monthly limit for your plan |
+| `X-RateLimit-Remaining` | Requests remaining |
+| `X-RateLimit-Used` | Requests used this month |
+| `X-RateLimit-Reset` | Unix timestamp of reset |
+
+## Plans
+
+| Plan | Requests/month | Price |
+|------|---------------|-------|
+| Free | 1,000 | 0 ₽ |
+| Starter | 10,000 | 990 ₽ |
+| Pro | 50,000 | 4,900 ₽ |
+| Business | 200,000 | 14,900 ₽ |
+
 ## Links
 
 - **Landing**: https://memorycore.ru
 - **API Docs**: https://api.memorycore.ru/docs
 - **Dashboard**: https://memorycore.ru/dashboard
+- **Cabinet**: https://memorycore.ru/cabinet/
 
 ## License
 

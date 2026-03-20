@@ -1,12 +1,20 @@
 """
-Memory Core SDK — Python Client
+Memory Core SDK — Python Client v0.4.2
 Sync (requests) + Async (httpx) клиенты для Memory Core API.
 
 Автор: Алита (Claude) для семьи Науменко
 Продукт: ООО «Отель Групп»
+
+Changelog v0.4.2:
+  - search() — семантический поиск по памяти
+  - delete() — удаление записей
+  - export_data() — экспорт данных пользователя
+  - import_data() — импорт данных пользователя
+  - usage() — текущее использование API (rate limits)
+  - regenerate_key() — перегенерация API ключа
 """
 
-from typing import Optional, Any
+from typing import Optional, Any, List, Dict
 import json
 
 
@@ -28,8 +36,12 @@ class MemoryClient:
         ctx = memory.context(user_id="user_42", query="что заказать на ужин?")
         print(ctx["warm_episodes"])
 
-        # Профиль
-        profile = memory.profile("user_42")
+        # Семантический поиск (v0.4.2)
+        results = memory.search(user_id="user_42", query="еда", limit=5)
+
+        # Использование API (v0.4.2)
+        usage = memory.usage()
+        print(f"Использовано: {usage['used']}/{usage['limit']}")
     """
 
     DEFAULT_URL = "https://api.memorycore.ru/api/v1"
@@ -75,10 +87,21 @@ class MemoryClient:
         resp.raise_for_status()
         return resp.json()
 
-    def _get(self, path: str) -> dict:
+    def _get(self, path: str, params: dict = None) -> dict:
         """GET запрос к API."""
         resp = self._session.get(
             f"{self._base_url}{path}",
+            params=params,
+            timeout=self._timeout,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def _delete(self, path: str, data: dict = None) -> dict:
+        """DELETE запрос к API."""
+        resp = self._session.delete(
+            f"{self._base_url}{path}",
+            json=data,
             timeout=self._timeout,
         )
         resp.raise_for_status()
@@ -166,6 +189,73 @@ class MemoryClient:
             "min_similarity": min_similarity,
         })
 
+    def search(
+        self,
+        user_id: str,
+        query: str,
+        bot_id: str = None,
+        limit: int = 10,
+        memory_type: str = None,
+        min_score: float = 0.3,
+    ) -> dict:
+        """
+        Семантический поиск по памяти пользователя (v0.4.2).
+
+        Args:
+            user_id: ID пользователя
+            query: Поисковый запрос
+            bot_id: ID бота
+            limit: Максимум результатов
+            memory_type: Фильтр по типу (message, fact, episode, preference)
+            min_score: Минимальный score релевантности
+
+        Returns:
+            {"results": [...], "total": N, "query": "..."}
+        """
+        payload = {
+            "user_id": user_id,
+            "bot_id": bot_id or self._bot_id,
+            "query": query,
+            "limit": limit,
+            "min_score": min_score,
+        }
+        if memory_type:
+            payload["memory_type"] = memory_type
+        return self._post("/memory/search", payload)
+
+    def delete(
+        self,
+        user_id: str,
+        memory_id: str = None,
+        bot_id: str = None,
+        memory_type: str = None,
+        delete_all: bool = False,
+    ) -> dict:
+        """
+        Удалить записи из памяти (v0.4.2).
+
+        Args:
+            user_id: ID пользователя
+            memory_id: Конкретный ID записи (если нужно удалить одну)
+            bot_id: ID бота
+            memory_type: Удалить все записи этого типа
+            delete_all: Удалить ВСЮ память пользователя (осторожно!)
+
+        Returns:
+            {"status": "deleted", "count": N}
+        """
+        payload = {
+            "user_id": user_id,
+            "bot_id": bot_id or self._bot_id,
+        }
+        if memory_id:
+            payload["memory_id"] = memory_id
+        if memory_type:
+            payload["memory_type"] = memory_type
+        if delete_all:
+            payload["delete_all"] = True
+        return self._delete("/memory/delete", payload)
+
     def summarize(
         self,
         user_id: str,
@@ -206,6 +296,71 @@ class MemoryClient:
         """Проверка здоровья API."""
         return self._get("/health")
 
+    # === МЕТОДЫ v0.4.2 ===
+
+    def usage(self) -> dict:
+        """
+        Текущее использование API — лимиты и расход (v0.4.2).
+
+        Returns:
+            {
+                "tenant_id": "...",
+                "plan": "free|starter|pro|business",
+                "limit": 1000,
+                "used": 42,
+                "remaining": 958,
+                "month": "2026-03",
+                "reset_at": 1743465600
+            }
+        """
+        return self._get("/account/usage")
+
+    def export_data(self, user_id: str, format: str = "json") -> dict:
+        """
+        Экспорт данных пользователя (GDPR/FZ-152 compliance) (v0.4.2).
+
+        Args:
+            user_id: ID пользователя
+            format: Формат экспорта (json, csv)
+
+        Returns:
+            {"user_id": "...", "records": [...], "total": N, "exported_at": "..."}
+        """
+        return self._get(f"/memory/export/{user_id}", params={"format": format})
+
+    def import_data(self, user_id: str, records: List[dict], bot_id: str = None) -> dict:
+        """
+        Импорт данных пользователя (v0.4.2).
+
+        Args:
+            user_id: ID пользователя
+            records: Список записей [{content, memory_type, metadata}, ...]
+            bot_id: ID бота
+
+        Returns:
+            {"status": "imported", "count": N, "errors": [...]}
+        """
+        return self._post("/memory/import", {
+            "user_id": user_id,
+            "bot_id": bot_id or self._bot_id,
+            "records": records,
+        })
+
+    def regenerate_key(self) -> dict:
+        """
+        Перегенерация API ключа (v0.4.2).
+        ВНИМАНИЕ: Старый ключ перестанет работать!
+
+        Returns:
+            {"api_key": "mc_live_...", "created_at": "..."}
+        """
+        result = self._post("/account/regenerate-key", {})
+        # Обновляем ключ в текущей сессии
+        if "api_key" in result:
+            self._api_key = result["api_key"]
+            self._session.headers["X-API-Key"] = result["api_key"]
+        return result
+
     # === УДОБНЫЕ МЕТОДЫ ===
 
     def remember(self, user_id: str, fact: str, **kwargs) -> dict:
@@ -236,6 +391,10 @@ class AsyncMemoryClient:
         # В async функции:
         await memory.upsert(user_id="user_42", content="Люблю SPA")
         ctx = await memory.context(user_id="user_42", query="что предложить?")
+
+        # Новое в v0.4.2:
+        results = await memory.search(user_id="user_42", query="еда")
+        usage = await memory.usage()
     """
 
     DEFAULT_URL = "https://api.memorycore.ru/api/v1"
@@ -278,11 +437,19 @@ class AsyncMemoryClient:
         resp.raise_for_status()
         return resp.json()
 
-    async def _get(self, path: str) -> dict:
+    async def _get(self, path: str, params: dict = None) -> dict:
         client = await self._get_client()
-        resp = await client.get(f"{self._base_url}{path}")
+        resp = await client.get(f"{self._base_url}{path}", params=params)
         resp.raise_for_status()
         return resp.json()
+
+    async def _delete(self, path: str, data: dict = None) -> dict:
+        client = await self._get_client()
+        resp = await client.request("DELETE", f"{self._base_url}{path}", json=data)
+        resp.raise_for_status()
+        return resp.json()
+
+    # === ОСНОВНЫЕ МЕТОДЫ ===
 
     async def upsert(self, user_id: str, content: str, bot_id: str = None,
                       memory_type: str = "message", session_id: str = None,
@@ -314,6 +481,37 @@ class AsyncMemoryClient:
             "min_similarity": min_similarity,
         })
 
+    async def search(self, user_id: str, query: str, bot_id: str = None,
+                      limit: int = 10, memory_type: str = None,
+                      min_score: float = 0.3) -> dict:
+        """Семантический поиск по памяти (async, v0.4.2)."""
+        payload = {
+            "user_id": user_id,
+            "bot_id": bot_id or self._bot_id,
+            "query": query,
+            "limit": limit,
+            "min_score": min_score,
+        }
+        if memory_type:
+            payload["memory_type"] = memory_type
+        return await self._post("/memory/search", payload)
+
+    async def delete(self, user_id: str, memory_id: str = None,
+                      bot_id: str = None, memory_type: str = None,
+                      delete_all: bool = False) -> dict:
+        """Удалить записи из памяти (async, v0.4.2)."""
+        payload = {
+            "user_id": user_id,
+            "bot_id": bot_id or self._bot_id,
+        }
+        if memory_id:
+            payload["memory_id"] = memory_id
+        if memory_type:
+            payload["memory_type"] = memory_type
+        if delete_all:
+            payload["delete_all"] = True
+        return await self._delete("/memory/delete", payload)
+
     async def summarize(self, user_id: str, bot_id: str = None,
                          session_id: str = "default") -> dict:
         """Суммаризировать сессию (async)."""
@@ -334,6 +532,36 @@ class AsyncMemoryClient:
     async def health(self) -> dict:
         """Health check (async)."""
         return await self._get("/health")
+
+    # === МЕТОДЫ v0.4.2 ===
+
+    async def usage(self) -> dict:
+        """Текущее использование API (async, v0.4.2)."""
+        return await self._get("/account/usage")
+
+    async def export_data(self, user_id: str, format: str = "json") -> dict:
+        """Экспорт данных пользователя (async, v0.4.2)."""
+        return await self._get(f"/memory/export/{user_id}", params={"format": format})
+
+    async def import_data(self, user_id: str, records: list, bot_id: str = None) -> dict:
+        """Импорт данных пользователя (async, v0.4.2)."""
+        return await self._post("/memory/import", {
+            "user_id": user_id,
+            "bot_id": bot_id or self._bot_id,
+            "records": records,
+        })
+
+    async def regenerate_key(self) -> dict:
+        """Перегенерация API ключа (async, v0.4.2). Старый ключ перестанет работать!"""
+        result = await self._post("/account/regenerate-key", {})
+        if "api_key" in result:
+            self._api_key = result["api_key"]
+            # Обновляем заголовок в httpx клиенте
+            if self._client:
+                self._client.headers["X-API-Key"] = result["api_key"]
+        return result
+
+    # === УДОБНЫЕ МЕТОДЫ ===
 
     async def remember(self, user_id: str, fact: str, **kwargs) -> dict:
         """Запомнить факт (async)."""
