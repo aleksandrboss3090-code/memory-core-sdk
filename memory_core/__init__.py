@@ -12,5 +12,5 @@ Site: https://memorycore.ru
 
 from memory_core.client import MemoryClient, AsyncMemoryClient
 
-__version__ = "0.4.2"
+__version__ = "0.5.0"
 __all__ = ["MemoryClient", "AsyncMemoryClient"]

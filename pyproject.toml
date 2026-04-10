@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "memorycore-ai"
-version = "0.4.2"
+version = "0.5.0"
 description = "Universal memory engine for AI bots. 3 layers: Redis (Hot) + Qdrant (Warm) + Neo4j (Cold). FZ-152 compliant."
 readme = "README.md"
 license = {text = "MIT"}

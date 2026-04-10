@@ -1,9 +1,16 @@
 """
-Memory Core SDK — Python Client v0.4.2
+Memory Core SDK — Python Client v0.5.0
 Sync (requests) + Async (httpx) клиенты для Memory Core API.
 
 Автор: Алита (Claude) для семьи Науменко
 Продукт: ООО «Отель Групп»
+
+Changelog v0.5.0:
+  - forget() — мягкое удаление (soft delete) записей в корзину на 30 дней
+  - trash() — просмотр корзины с оставшимся временем хранения
+  - restore() — восстановление записей из корзины
+  - purge() — физическое удаление из корзины (необратимо!)
+  Все методы поддерживают обратную совместимость с v0.4.2
 
 Changelog v0.4.2:
   - search() — семантический поиск по памяти
@@ -255,6 +262,97 @@ class MemoryClient:
         if delete_all:
             payload["delete_all"] = True
         return self._delete("/memory/delete", payload)
+
+    def forget(
+        self,
+        episode_id: str = None,
+        user_id: str = None,
+        bot_id: str = None,
+    ) -> dict:
+        """
+        Мягкое удаление записи (soft delete, v0.5.0).
+        Запись перемещается в корзину на 30 дней. Можно восстановить через restore().
+        Через 30 дней удаляется физически.
+
+        Args:
+            episode_id: UUID конкретной записи (удалить одну)
+            user_id: ID пользователя (удалить все записи пользователя)
+            bot_id: ID бота
+
+        Returns:
+            {"soft_delete": true, "retention_days": 30, "message": "..."}
+        """
+        if episode_id:
+            return self._delete(f"/memory/forget/{episode_id}")
+        else:
+            return self._delete("/memory/delete", {
+                "user_id": user_id,
+                "bot_id": bot_id or self._bot_id,
+            })
+
+    def trash(
+        self,
+        user_id: str,
+        limit: int = 20,
+    ) -> dict:
+        """
+        Просмотр корзины — удалённые записи с оставшимся временем хранения (v0.5.0).
+
+        Args:
+            user_id: ID пользователя
+            limit: Максимум записей
+
+        Returns:
+            {"total_in_trash": N, "trash": [{"id": "...", "days_remaining": 28, "auto_purge_at": "..."}]}
+        """
+        return self._get("/memory/trash", params={"user_id": user_id, "limit": limit})
+
+    def restore(
+        self,
+        episode_ids: list = None,
+        user_id: str = None,
+        bot_id: str = None,
+    ) -> dict:
+        """
+        Восстановить записи из корзины (v0.5.0).
+
+        Args:
+            episode_ids: Список UUID записей для восстановления
+            user_id: Восстановить ВСЕ записи пользователя
+            bot_id: ID бота
+
+        Returns:
+            {"restored_count": N, "restored_ids": ["..."]}
+        """
+        payload = {}
+        if episode_ids:
+            payload["episode_ids"] = episode_ids
+        if user_id:
+            payload["user_id"] = user_id
+        if bot_id:
+            payload["bot_id"] = bot_id
+        return self._post("/memory/restore", payload)
+
+    def purge(
+        self,
+        user_id: str,
+        force_all: bool = False,
+    ) -> dict:
+        """
+        Физическое удаление из корзины — НЕОБРАТИМО (v0.5.0).
+        По умолчанию удаляет только записи старше 30 дней.
+
+        Args:
+            user_id: ID пользователя
+            force_all: True = удалить ВСЕ из корзины (даже свежие)
+
+        Returns:
+            {"purged_count": N}
+        """
+        return self._delete("/memory/purge", {
+            "user_id": user_id,
+            "force_all": force_all,
+        })
 
     def summarize(
         self,
@@ -511,6 +609,97 @@ class AsyncMemoryClient:
         if delete_all:
             payload["delete_all"] = True
         return await self._delete("/memory/delete", payload)
+
+    async def forget(
+        self,
+        episode_id: str = None,
+        user_id: str = None,
+        bot_id: str = None,
+    ) -> dict:
+        """
+        Мягкое удаление записи (soft delete, v0.5.0, async).
+        Запись перемещается в корзину на 30 дней. Можно восстановить через restore().
+        Через 30 дней удаляется физически.
+
+        Args:
+            episode_id: UUID конкретной записи (удалить одну)
+            user_id: ID пользователя (удалить все записи пользователя)
+            bot_id: ID бота
+
+        Returns:
+            {"soft_delete": true, "retention_days": 30, "message": "..."}
+        """
+        if episode_id:
+            return await self._delete(f"/memory/forget/{episode_id}")
+        else:
+            return await self._delete("/memory/delete", {
+                "user_id": user_id,
+                "bot_id": bot_id or self._bot_id,
+            })
+
+    async def trash(
+        self,
+        user_id: str,
+        limit: int = 20,
+    ) -> dict:
+        """
+        Просмотр корзины — удалённые записи с оставшимся временем хранения (v0.5.0, async).
+
+        Args:
+            user_id: ID пользователя
+            limit: Максимум записей
+
+        Returns:
+            {"total_in_trash": N, "trash": [{"id": "...", "days_remaining": 28, "auto_purge_at": "..."}]}
+        """
+        return await self._get("/memory/trash", params={"user_id": user_id, "limit": limit})
+
+    async def restore(
+        self,
+        episode_ids: list = None,
+        user_id: str = None,
+        bot_id: str = None,
+    ) -> dict:
+        """
+        Восстановить записи из корзины (v0.5.0, async).
+
+        Args:
+            episode_ids: Список UUID записей для восстановления
+            user_id: Восстановить ВСЕ записи пользователя
+            bot_id: ID бота
+
+        Returns:
+            {"restored_count": N, "restored_ids": ["..."]}
+        """
+        payload = {}
+        if episode_ids:
+            payload["episode_ids"] = episode_ids
+        if user_id:
+            payload["user_id"] = user_id
+        if bot_id:
+            payload["bot_id"] = bot_id
+        return await self._post("/memory/restore", payload)
+
+    async def purge(
+        self,
+        user_id: str,
+        force_all: bool = False,
+    ) -> dict:
+        """
+        Физическое удаление из корзины — НЕОБРАТИМО (v0.5.0, async).
+        По умолчанию удаляет только записи старше 30 дней.
+
+        Args:
+            user_id: ID пользователя
+            force_all: True = удалить ВСЕ из корзины (даже свежие)
+
+        Returns:
+            {"purged_count": N}
+        """
+        return await self._delete("/memory/purge", {
+            "user_id": user_id,
+            "force_all": force_all,
+        })
 
     async def summarize(self, user_id: str, bot_id: str = None,
                          session_id: str = "default") -> dict:

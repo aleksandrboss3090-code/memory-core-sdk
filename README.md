@@ -54,6 +54,15 @@ ctx = await memory.context(user_id="user_42", query="что предложить
 | `profile(user_id)` | Full user profile |
 | `health()` | API health check |
 
+### New in v0.5.0 (Soft Delete)
+
+| Method | Description |
+|--------|-------------|
+| `forget(episode_id or user_id)` | Soft delete to trash (30-day retention) |
+| `trash(user_id)` | View deleted records in trash |
+| `restore(episode_ids or user_id)` | Restore from trash |
+| `purge(user_id)` | Permanently delete (IRREVERSIBLE) |
+
 ### New in v0.4.2
 
 | Method | Description |
@@ -100,6 +109,33 @@ memory.delete(user_id="user_42", memory_type="fact")
 
 # Delete ALL user data
 memory.delete(user_id="user_42", delete_all=True)
+```
+
+### Soft Delete (v0.5.0)
+
+Soft Delete - safe deletion with 30-day recovery window.
+
+```python
+# Soft delete one record (move to trash for 30 days)
+memory.forget(episode_id="uuid-record")
+
+# Soft delete ALL user records (move to trash for 30 days)
+memory.forget(user_id="user_42")
+
+# View trash - see deleted records with remaining retention days
+trash = memory.trash(user_id="user_42")
+for item in trash["trash"]:
+    print(f"ID: {item['id']}, Days left: {item['days_remaining']}")
+
+# Restore from trash
+memory.restore(episode_ids=["uuid1", "uuid2"])
+
+# Restore ALL user records from trash
+memory.restore(user_id="user_42")
+
+# Permanently purge from trash (IRREVERSIBLE!)
+memory.purge(user_id="user_42")  # Only records older than 30 days
+memory.purge(user_id="user_42", force_all=True)  # ALL records (even fresh ones!)
 ```
 
 ### Export / Import (GDPR/FZ-152)
